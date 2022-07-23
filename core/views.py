@@ -595,9 +595,10 @@ def mint_item():
                   '"type":"function"}] '
             addr = '0xC9c209eA9C2f28394d00E185D80162aBcB0F8f3f'
             contract = web3.eth.contract(address=addr, abi=abi)
-            collectible = contract.functions.createCollectible().call()
-            prod.address = collectible.address()
-            prod.save()
-            print(collectible)
+            # collectible = contract.functions.createCollectible().call()
+            # print(collectible.newTokenId)
+            # prod.address = collectible.address()
+            # prod.save()
+            # print(collectible)
     # latestData_eth_usd = contract.functions.latestRoundData().call()
     # return latestData_eth_usd[1]/1e8
