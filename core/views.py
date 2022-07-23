@@ -2,7 +2,7 @@ import os
 import random
 import string
 from dotenv import load_dotenv
-
+from brownie import accounts
 import stripe
 from django.conf import settings
 from django.contrib import messages
@@ -14,6 +14,7 @@ from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.views.generic import ListView, DetailView, View
 from web3 import Web3
+from web3.middleware import geth_poa_middleware
 
 from .forms import CheckoutForm, CouponForm, RefundForm, PaymentForm
 from .models import Item, OrderItem, Order, Address, Payment, Coupon, Refund, UserProfile
@@ -539,7 +540,9 @@ def mint_item():
     for prod in Item.objects.all():
         if prod.address is None or prod.address == '':
             print('Minting')
+            # web3 = Web3(Web3.HTTPProvider('https://dawn-proud-lake.rinkeby.discover.quiknode.pro/' + os.environ.get('QUICKNODE_PROJECT_ID')+'/'))
             web3 = Web3(Web3.HTTPProvider('https://rinkeby.infura.io/v3/' + os.environ.get('WEB3_INFURA_PROJECT_ID')))
+            web3.middleware_onion.inject(geth_poa_middleware, layer=0)
             abi = '[{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{' \
                   '"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,' \
                   '"internalType":"address","name":"approved","type":"address"},{"indexed":true,"internalType":"uint256",' \
@@ -594,11 +597,21 @@ def mint_item():
                   '"name":"tokenId","type":"uint256"}],"name":"transferFrom","outputs":[],"stateMutability":"nonpayable",' \
                   '"type":"function"}] '
             addr = '0xC9c209eA9C2f28394d00E185D80162aBcB0F8f3f'
-            contract = web3.eth.contract(address=addr, abi=abi)
-            # collectible = contract.functions.createCollectible().call()
-            # print(collectible.newTokenId)
-            # prod.address = collectible.address()
-            # prod.save()
-            # print(collectible)
+            contract_instance = web3.eth.contract(address=addr, abi=abi)
+            tx = contract_instance.functions.createCollectible().buildTransaction(
+                {
+                    "chainId": 4,
+                    "gasPrice": 10000000000,
+                    "from": os.environ.get('ADDRESS'),
+                    "nonce": web3.eth.getTransactionCount(os.environ.get('ADDRESS'))
+                }
+            )
+            signed_tx = web3.eth.account.sign_transaction(tx, private_key=os.environ.get('PRIVATE_KEY'))
+            tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            print("Updating stored Value...")
+            tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
+            print(tx_receipt['logs'][0]['address'])
+            prod.address = tx_receipt['logs'][0]['address']
+            prod.save()
     # latestData_eth_usd = contract.functions.latestRoundData().call()
     # return latestData_eth_usd[1]/1e8
