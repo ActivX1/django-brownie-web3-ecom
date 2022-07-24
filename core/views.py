@@ -2,7 +2,6 @@ import os
 import random
 import string
 from dotenv import load_dotenv
-from brownie import accounts
 import stripe
 from django.conf import settings
 from django.contrib import messages
@@ -15,6 +14,9 @@ from django.utils import timezone
 from django.views.generic import ListView, DetailView, View
 from web3 import Web3
 from web3.middleware import geth_poa_middleware
+import requests
+from pathlib import Path
+import json
 
 from .forms import CheckoutForm, CouponForm, RefundForm, PaymentForm
 from .models import Item, OrderItem, Order, Address, Payment, Coupon, Refund, UserProfile
@@ -224,6 +226,7 @@ class PaymentView(View):
                 'ETH/USD_Price': order.get_total_eth()
             }
             userprofile = self.request.user.userprofile
+            return render(self.request, "payment.html", context)
 
         if order.billing_address and payment_option != 'etherium':
             context = {
@@ -539,6 +542,7 @@ def mint_item():
     load_dotenv()
     for prod in Item.objects.all():
         if prod.address is None or prod.address == '':
+            prod.ipfs = create_meta_data(prod)
             print('Minting')
             # web3 = Web3(Web3.HTTPProvider('https://dawn-proud-lake.rinkeby.discover.quiknode.pro/' + os.environ.get('QUICKNODE_PROJECT_ID')+'/'))
             web3 = Web3(Web3.HTTPProvider('https://rinkeby.infura.io/v3/' + os.environ.get('WEB3_INFURA_PROJECT_ID')))
@@ -613,5 +617,54 @@ def mint_item():
             print(tx_receipt['logs'][0]['address'])
             prod.address = tx_receipt['logs'][0]['address']
             prod.save()
-    # latestData_eth_usd = contract.functions.latestRoundData().call()
-    # return latestData_eth_usd[1]/1e8
+
+
+def create_meta_data(product):
+    # payload = {"pinataOptions": {"cidVersion": 1},
+    #            "pinataMetadata": {
+    #                "name": "Products",
+    #                "keyvalues": {
+    #                    "title": product.title,
+    #                    "description": product.description,
+    #                    "price": product.price,
+    #                    "discount_price": product.discount_price,
+    #                    "category": product.category,
+    #                }
+    #            }}
+    image_path = upload_img_to_ipfs(product.image.path)
+    # upload_json_to_ipfs(payload)
+    return image_path
+
+
+PINATA_BASE_URL = "https://api.pinata.cloud/"
+
+
+def upload_img_to_ipfs(filepath):
+    endpoint_img = "pinning/pinFileToIPFS"
+    print(filepath)
+    filename = filepath.split("/")[-1:][0]
+    headers = {
+        "pinata_api_key": os.environ.get("PINATA_API_KEY"),
+        "pinata_secret_api_key": os.environ.get("PINATA_API_SECRET"),
+    }
+    with Path(filepath).open("rb") as fp:
+        image_binary = fp.read()
+        response = requests.post(
+            PINATA_BASE_URL + endpoint_img,
+            files={"file": (filename, image_binary)},
+            headers=headers,
+        )
+        print(response.json())
+    return "https://gateway.pinata.cloud/ipfs/"  # + response.json()['IpfsHash']
+
+
+def upload_json_to_ipfs(payload):
+    endpoint_json = "pinning/pinFileToIPFS"
+
+    headers = {
+        "pinata_api_key": os.environ.get("PINATA_API_KEY"),
+        "pinata_secret_api_key": os.environ.get("PINATA_API_SECRET"),
+    }
+    response = requests.request("POST", PINATA_BASE_URL + endpoint_json, headers=headers, data=payload)
+    print(response.json())
+    return response.url

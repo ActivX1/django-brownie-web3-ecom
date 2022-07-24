@@ -48,6 +48,7 @@ class Item(models.Model):
     description = models.TextField()
     image = models.ImageField()
     address = models.CharField(max_length=256, null=True, blank=True)
+    ipfs = models.CharField(max_length=256, null=True, blank=True)
 
     def __str__(self):
         return self.title
