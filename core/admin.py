@@ -1,7 +1,7 @@
 from django.contrib import admin
 
-from .models import Item, OrderItem, Order, Payment, Coupon, Refund, Address, UserProfile
-from .views import mint_item
+from .models import Item, OrderItem, Order, Payment, Coupon, Refund, Address, UserProfile, VendorPayable
+from .views import mint_item, pay_vendor
 
 
 def make_refund_accepted(modeladmin, request, queryset):
@@ -60,6 +60,11 @@ class ItemAdmin(admin.ModelAdmin):
     mint_item()
 
 
+class VendorAdmin(admin.ModelAdmin):
+    pay_vendor()
+
+
+admin.site.register(VendorPayable, VendorAdmin)
 admin.site.register(Item, ItemAdmin)
 admin.site.register(OrderItem)
 admin.site.register(Order, OrderAdmin)

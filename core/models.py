@@ -191,6 +191,8 @@ class VendorPayable(models.Model):
     name = models.CharField(max_length=100)
     address = models.CharField(max_length=256)
     overdue_usd = models.FloatField()
+    payment_status = models.BooleanField(default=False)
+    payment_tx = models.CharField(max_length=256, null=True, blank=True)
 
     def overdue_eth(self):
         return self.overdue_usd/currencyconverter()

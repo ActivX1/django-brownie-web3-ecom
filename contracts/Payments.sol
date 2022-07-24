@@ -22,11 +22,15 @@ contract Sales{
         funders.push(msg.sender);
     }
 
-
     modifier onlyOwner{
         require(msg.sender==owner);
         _;
     }
+
+    function payVendor(address Vendor, uint256 due_amt) public onlyOwner payable{
+        payable(Vendor).transfer(due_amt);
+    }
+
 
     function withdrawfromContract() public onlyOwner payable{
         payable(msg.sender).transfer(address(this).balance);

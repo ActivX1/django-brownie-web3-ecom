@@ -3,19 +3,19 @@ from scripts.helpful_scripts import (
     OPENSEA_URL,
     get_contract,
 )
-from brownie import AdvancedCollectible, network, config
+from brownie import AdvancedCollectible, network, config, Sales
 
-def deploy_and_create():
+def deploy_payments():
     account = get_account()
     # We want to be able to use the deployed contracts if we are on a testnet
     # Otherwise, we want to deploy some mocks and use those
     # Rinkeby
-    advanced_collectible = AdvancedCollectible.deploy({"from": account})
-    creating_tx = advanced_collectible.createCollectible({"from": account})
+    payments = Sales.deploy({"from": account})
+    creating_tx = payments.createCollectible({"from": account})
     creating_tx.wait(1)
     print("New token has been created!")
-    return advanced_collectible, creating_tx
+    return payments, creating_tx
 
 
 def main():
-    deploy_and_create()
+    deploy_payments()

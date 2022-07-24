@@ -19,7 +19,7 @@ from pathlib import Path
 import json
 
 from .forms import CheckoutForm, CouponForm, RefundForm, PaymentForm
-from .models import Item, OrderItem, Order, Address, Payment, Coupon, Refund, UserProfile
+from .models import Item, OrderItem, Order, Address, Payment, Coupon, Refund, UserProfile, VendorPayable
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -620,6 +620,52 @@ def mint_item():
             print(tx_receipt['logs'][0]['address'])
             prod.address = tx_receipt['logs'][0]['address']
             prod.save()
+
+
+def pay_vendor():
+    load_dotenv()
+    for vendor in VendorPayable.objects.all():
+        if not vendor.payment_status:
+            print('Paying Vendors')
+            # web3 = Web3(Web3.HTTPProvider('https://dawn-proud-lake.rinkeby.discover.quiknode.pro/' + os.environ.get('QUICKNODE_PROJECT_ID')+'/'))
+            web3 = Web3(Web3.HTTPProvider('https://rinkeby.infura.io/v3/' + os.environ.get('WEB3_INFURA_PROJECT_ID')))
+            web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+            abi = '[{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"stateMutability":"payable",' \
+                  '"type":"fallback"},{"inputs":[{"internalType":"address","name":"","type":"address"}],' \
+                  '"name":"addressToAmountFunded","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],' \
+                  '"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"",' \
+                  '"type":"uint256"}],"name":"funders","outputs":[{"internalType":"address","name":"",' \
+                  '"type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],' \
+                  '"name":"getContractBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],' \
+                  '"stateMutability":"view","type":"function"},{"inputs":[],"name":"makePayment","outputs":[],' \
+                  '"stateMutability":"payable","type":"function"},{"inputs":[],"name":"owner","outputs":[{' \
+                  '"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},' \
+                  '{"inputs":[{"internalType":"address","name":"Vendor","type":"address"},{"internalType":"uint256",' \
+                  '"name":"due_amt","type":"uint256"}],"name":"payVendor","outputs":[],"stateMutability":"payable",' \
+                  '"type":"function"},{"inputs":[],"name":"withdrawfromContract","outputs":[],' \
+                  '"stateMutability":"payable","type":"function"},{"stateMutability":"payable","type":"receive"}] '
+            addr = '0x98f7a07E0246f399Cd3DE4f786f30Aab3E39f608'
+            contract_instance = web3.eth.contract(address=addr, abi=abi)
+            print(vendor.overdue_eth())
+            print(vendor.address)
+            tx = contract_instance.functions.payVendor(Vendor=vendor.address, due_amt=int(vendor.overdue_eth()*1e16)).\
+                buildTransaction(
+                {
+                    "chainId": 4,
+                    "gasPrice": 10000000000,
+                    "from": os.environ.get('ADDRESS'),
+                    "nonce": web3.eth.getTransactionCount(os.environ.get('ADDRESS'))
+                }
+            )
+            signed_tx = web3.eth.account.sign_transaction(tx, private_key=os.environ.get('PRIVATE_KEY'))
+            tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            print("Updating stored Value...")
+            tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash)
+            print(tx_receipt['blockNumber'])
+            # print(tx_receipt['logs'][0]['address'])
+            # vendor.payment_tx = tx_receipt['logs'][0]['address']
+            vendor.payment_status = True
+            vendor.save()
 
 
 def create_meta_data(product):
