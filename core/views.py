@@ -704,7 +704,7 @@ def upload_img_to_ipfs(filepath):
             headers=headers,
         )
         print(response.json())
-    return "https://gateway.pinata.cloud/ipfs/"  # + response.json()['IpfsHash']
+    return "https://gateway.pinata.cloud/ipfs/" + response.json()['IpfsHash']
 
 
 def upload_json_to_ipfs(payload):
