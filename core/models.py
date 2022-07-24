@@ -187,6 +187,15 @@ class Refund(models.Model):
         return f"{self.pk}"
 
 
+class VendorPayable(models.Model):
+    name = models.CharField(max_length=100)
+    address = models.CharField(max_length=256)
+    overdue_usd = models.FloatField()
+
+    def overdue_eth(self):
+        return self.overdue_usd/currencyconverter()
+
+
 def userprofile_receiver(sender, instance, created, *args, **kwargs):
     if created:
         userprofile = UserProfile.objects.create(user=instance)
@@ -215,3 +224,4 @@ def currencyconverter():
     contract_eth_usd = web3.eth.contract(address=addr_eth_usd, abi=abi)
     latestData_eth_usd = contract_eth_usd.functions.latestRoundData().call()
     return latestData_eth_usd[1]/1e8
+

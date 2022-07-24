@@ -219,11 +219,12 @@ class PaymentView(View):
         order = Order.objects.get(user=self.request.user, ordered=False)
         payment_option = kwargs['payment_option']
         if order.billing_address and payment_option == 'etherium':
-            print("E")
+            print("Initializing Etherium Payment")
             context = {
                 'order': order,
                 'DISPLAY_COUPON_FORM': False,
-                'ETH/USD_Price': order.get_total_eth()
+                'ETH_USD_Price': order.get_total_eth(),
+                'payment_option': 'E'
             }
             userprofile = self.request.user.userprofile
             return render(self.request, "payment.html", context)
@@ -232,7 +233,8 @@ class PaymentView(View):
             context = {
                 'order': order,
                 'DISPLAY_COUPON_FORM': False,
-                'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY
+                'STRIPE_PUBLIC_KEY': settings.STRIPE_PUBLIC_KEY,
+                'payment_option': 'S'
             }
             userprofile = self.request.user.userprofile
             if userprofile.one_click_purchasing:
@@ -255,6 +257,7 @@ class PaymentView(View):
             return redirect("core:checkout")
 
     def post(self, *args, **kwargs):
+        print("Payment Received")
         order = Order.objects.get(user=self.request.user, ordered=False)
         form = PaymentForm(self.request.POST)
         userprofile = UserProfile.objects.get(user=self.request.user)

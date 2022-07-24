@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-contract Payments{
+contract Sales{
 
     mapping(address=>uint256) public addressToAmountFunded;
     address[] public funders;
@@ -22,6 +22,7 @@ contract Payments{
         funders.push(msg.sender);
     }
 
+
     modifier onlyOwner{
         require(msg.sender==owner);
         _;
@@ -34,4 +35,8 @@ contract Payments{
         }
         funders = new address[](0);
     }
+
+    fallback() external payable {}
+    receive() external payable {}
+
 }
